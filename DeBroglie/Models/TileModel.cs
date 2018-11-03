@@ -33,6 +33,6 @@ namespace DeBroglie.Models
         /// <summary>
         /// Scales the the occurency frequency of a given tile by the given multiplier.
         /// </summary>
-        public abstract void MultiplyFrequency(Tile tile, double multiplier);
+        public abstract void MultiplyFrequency(Tile tile, double multiplier, bool includeRotatedTiles = false);
     }
 }

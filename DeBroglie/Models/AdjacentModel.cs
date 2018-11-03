@@ -116,12 +116,21 @@ namespace DeBroglie.Models
         /// <summary>
         /// Sets the frequency of a given tile.
         /// </summary>
-        public void SetFrequency(Tile tile, double frequency)
+        public void SetFrequency(Tile tile, double frequency, bool includeRotatedTiles = false)
         {
-            int pattern = GetPattern(tile);
-            frequencies[pattern] = frequency;
-        }
+            Tile GetTile(Tile _tile)
+            {
+                return includeRotatedTiles ? GetUnrotatedTile(_tile) : _tile;
+            }
 
+            foreach (var kvp in PatternsToTiles)
+            {
+                if (GetTile(kvp.Value) == tile)
+                {
+                    frequencies[kvp.Key] = frequency;
+                }
+            }
+        }
 
         /// <summary>
         /// Declares that the tiles in dest can be placed adjacent to the tiles in src, in the direction specified by (x, y, z).
@@ -254,12 +263,19 @@ namespace DeBroglie.Models
         }
         public override ILookup<Tile, int> TilesToPatterns  => tilesToPatterns.ToLookup(x=>x.Key, x=>x.Value);
 
-        public override void MultiplyFrequency(Tile tile, double multiplier)
+        public override void MultiplyFrequency(Tile tile, double multiplier, bool includeRotatedTiles = false)
         {
-            var patterns = TilesToPatterns[tile];
-            foreach (var pattern in patterns)
+            Tile GetTile(Tile _tile)
             {
-                frequencies[pattern] *= multiplier;
+                return includeRotatedTiles ? GetUnrotatedTile(_tile) : _tile;
+            }
+
+            foreach (var kvp in PatternsToTiles)
+            {
+                if (GetTile(kvp.Value) == tile)
+                {
+                    frequencies[kvp.Key] *= multiplier;
+                }
             }
         }
 
@@ -280,6 +296,49 @@ namespace DeBroglie.Models
                 patternsToTiles = null;
             }
             return pattern;
+        }
+
+        public void NormalizeFrequencies(bool combineRotatedTiles = false)
+        {
+            Tile GetTile(Tile _tile)
+            {
+                return combineRotatedTiles ? GetUnrotatedTile(_tile) : _tile;
+            }
+
+            Dictionary<Tile, double> uniqueTileFrequencies = new Dictionary<Tile, double>();
+
+            foreach (var kvp in PatternsToTiles)
+            {
+                var tile = GetTile(kvp.Value);
+
+                uniqueTileFrequencies.TryGetValue(tile, out var sum);
+                uniqueTileFrequencies[tile] = sum + frequencies[kvp.Key];
+            }
+
+            foreach (var kvp in PatternsToTiles)
+            {
+                frequencies[kvp.Key] /= uniqueTileFrequencies[GetTile(kvp.Value)];
+            }
+
+            var totalFrequency = 0.0;
+            foreach (var f in frequencies)
+            {
+                totalFrequency += f;
+            }
+
+            for (int i = 0; i < frequencies.Count; i++) 
+            {
+                frequencies[i] = (frequencies[i] / totalFrequency);
+            }
+        }
+
+        private Tile GetUnrotatedTile(Tile tile)
+        {
+            if (tile.Value is RotatedTile rotatedTile)
+            {
+                return rotatedTile.Tile;
+            }
+            return tile;
         }
     }
 }
